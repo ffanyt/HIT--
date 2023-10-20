@@ -29,13 +29,18 @@ class Method:
             rev = RevACK.RevAck(send_socket, ack_map, stop_flag)
             rev.start()
         end_end_flag = False
-        while next_idx <= num_of_packets or len(ack_map) > 0:
+        # xvnhuan1 = 1
+        while next_idx < num_of_packets or len(ack_map) > 0:
+            # print("循环1:", xvnhuan1)
+            # xvnhuan1 += 1
+            # xvnhuan2 = 1
             if len(data) == 0:
                 break
             old_base = base_idx
             old_size = len(ack_map)
             # print(f"现在对窗口进行更新，当前窗口起点为： {base_idx}，next_point为： {next_idx}，此时的ack_map为： {ack_map}")
             for i in range(old_size):
+
                 idx = (old_base + i + 1) % 256
                 # 检查ack_map是否有idx的键值对
                 if ack_map.get(idx) is None:
@@ -43,9 +48,12 @@ class Method:
                     # break
                 if ack_map[idx] is False:
                     break
+                # print("更新ack_map")
                 base_idx += 1
                 # next_idx += 1
                 ack_map.pop(idx)
+                # print(f"更新ack_map后为： {ack_map}")
+                # print("end_flag:", end_flag, "len(ack_map):", len(ack_map), "base_idx:", base_idx, "len(data):", len(data))
                 if end_flag and len(ack_map) == 0 and base_idx == len(data):
                     end_end_flag = True
                     break
@@ -60,6 +68,8 @@ class Method:
             i = 1
             # print(f"即将发送下一个窗口，当前窗口起点为： {base_idx}，next_point为： {next_idx}，此时的ack_map为： {ack_map}")
             while next_idx - base_idx < self.send_window and next_idx < num_of_packets:
+                # print("循环2:", xvnhuan2)
+                # xvnhuan2 += 1
                 # if rev.is_alive():
                     # print("testtest111")
                     # print(rev.getName())
@@ -86,18 +96,22 @@ class Method:
         return
 
     def recv(self, recv_socket: socket, target_addr: str, target_port: int, path: str):
+        time_max = 15
+        recv_socket.settimeout(time_max)
         rec_idx_arr = []
         rec_data_map = {}
         all_data = b""
         base_idx = 1
         # next_idx = 0
         max_idx = base_idx + self.recv_window - 1
+        # 准备写入文件
+        f = open(path, "wb")
         while True:
             # 接收数据
             try:
                 recv_package, recv_addr = recv_socket.recvfrom(self.packet_size + 3)
             except Exception as e:
-                print("接收完成，退出，退出原因：", e)
+                print("接收完成，退出")
                 with open(path, "wb") as f:
                     f.write(all_data)
                 f.close()
@@ -117,24 +131,20 @@ class Method:
             recv_id, recv_checksum, recv_data = recv_data_unpackage
             # 检查序号，若为期待的序号，则将数据存入字典
             if recv_id < base_idx:
-
                 ack = data_sended.Data(None, recv_id)
                 ack = ack.package()
-                recv_socket.sendto(ack, (target_addr, target_port))
+                recv_socket.sendto(ack, (addr_send, port_send))
                 print(f"该数据{recv_id}已经被接收，丢弃，base_idx为： {base_idx}，重新发送ack: {ack}")
                 continue
             if recv_id > max_idx:
                 print(f"该数据{recv_id}之前数据未被接收，丢弃，此时的rev_idx_arr为： {recv_id}，max_idx为： {max_idx}")
-                # ack = data_sended.Data(None, recv_id)
-                # ack = ack.package()
-                # recv_socket.sendto(ack, (target_addr, target_port))
                 continue
             # 检查序号是否已经被接收
             if recv_id in rec_idx_arr:
                 print(f"该数据{recv_id}已经被接收，丢弃")
-                # ack = data_sended.Data(None, recv_id)
-                # ack = ack.package()
-                # recv_socket.sendto(ack, (target_addr, target_port))
+                ack = data_sended.Data(None, recv_id)
+                ack = ack.package()
+                recv_socket.sendto(ack, (addr_send, port_send))
                 continue
             # 检查是否为期待的分组
             rec_idx_arr.append(recv_id)
@@ -142,7 +152,7 @@ class Method:
             # 发送ack
             ack_int = data_sended.Data(None, recv_id)
             ack = ack_int.package()
-            recv_socket.sendto(ack, (target_addr, target_port))
+            recv_socket.sendto(ack, (addr_send, port_send))
             print(f"发送ack_int： {ack_int.uid}, ack:{ack}")
             # 检查窗口是否可以滑动
             for i in range(self.recv_window):

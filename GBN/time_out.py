@@ -36,7 +36,7 @@ class TimeOut(threading.Thread):
                 self.send_socket.sendto(self.send_package, (self.target_addr, self.target_port))
             except Exception as e:
                 print("超时重传失败，失败原因：", e)
-            time_out_new = TimeOut(self.ack_map, self.send_package, self.idx, self.new_id, self.send_socket, self.target_addr, self.target_port, self.time_out_list)
+            time_out_new = TimeOut(self.ack_map, self.send_package, self.idx, self.new_id, self.send_socket, self.target_addr, self.target_port, self.stop_flag, self.time_out_list)
             time_out_new.start()
             self.time_out_list.append(time_out_new)
             return
