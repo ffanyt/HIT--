@@ -23,13 +23,13 @@ class RevAck(threading.Thread):
         while True:
             # print("接收线程正在进行")
             if self.stop_flag:
-                print("接收线程结束")
+                # print("接收线程结束")
                 return
             # if len(self.ackMap) == 0 and end_flag:
             #     break
             data = None
             if end_flag and len(self.ackMap) == 0:
-                print("接收线程结束")
+                # print("接收线程结束")
                 break
             # 以固定长度接收数据
             # data, addr = self.socket1.recvfrom(self.packet_size)
@@ -47,14 +47,9 @@ class RevAck(threading.Thread):
             # print(f"接收到ACK序号为： {ack}，接收后的ackMap为： {self.ackMap}")
             if self.ackMap.get(ack_id) is not None:
                 if self.ackMap[ack_id] is False:
-                    ack_map_before = self.ackMap.copy()
-                    for i in range(ack_id):
-                        if self.ackMap.get(i) is None:
-                            continue
-                        if self.ackMap.get(i) is False:
-                            self.ackMap[i] = True
                     self.ackMap[ack_id] = True
-                    print(f"接收到ACK序号为： {ack_id}，接收前ackMap为：{ack_map_before}，接收后的ackMap为： {self.ackMap}")
+                    self.count += 1
+                    print(f"接收到ACK序号为： {ack_id}，接收后的ackMap为： {self.ackMap}")
                 else:
                     print(f"接收到ACK序号为： {ack_id}，但是该分组已经被接收过了，此时的ackMap为： {self.ackMap}")
             else:

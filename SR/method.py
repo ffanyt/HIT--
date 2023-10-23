@@ -9,9 +9,11 @@ loss = 0.5
 
 class Method:
     send_window = 5
-    recv_window = 1
+    recv_window = 2
     # 单个分组大小
     packet_size = 512
+    # 序号的比特数
+    seq_bits = 512
 
     def send(self, send_socket: socket, data, target_addr: str, target_port: int):
         time_out_list = []
@@ -35,7 +37,6 @@ class Method:
                 break
             old_base = base_idx
             old_size = len(ack_map)
-            max_idx = 0
             # print(f"现在对窗口进行更新，当前窗口起点为： {base_idx}，next_point为： {next_idx}，此时的ack_map为： {ack_map}")
             for i in range(old_size):
                 idx = (old_base + i + 1) % 256
@@ -59,37 +60,36 @@ class Method:
                 break
             ack_num = base_idx + len(ack_map)
             i = 1
-            all_send_package = []
-            time_out_open_flag = False
-            first_id_sended = (ack_num + i) % 256
-            send_count = 0
+            # print(f"即将发送下一个窗口，当前窗口起点为： {base_idx}，next_point为： {next_idx}，此时的ack_map为： {ack_map}")
             while next_idx - base_idx < self.send_window and next_idx < num_of_packets:
+                # print("循环2:", xvnhuan2)
+                # xvnhuan2 += 1
+                # if rev.is_alive():
+                # print("testtest111")
+                # print(rev.getName())
                 if next_idx > num_of_packets:
                     break
                 new_id = (ack_num + i) % 256
                 i += 1
                 send_data = data_sended.Data(data[next_idx], new_id)
                 send_package = send_data.package()
-                # unpacked_data = data_sended.Data.unpackage(send_package)
-                all_send_package.append(send_package)
-                # 概率丢包
-                if random.random() > loss:
+                unpacked_data = data_sended.Data.unpackage(send_package)
+                # 设置概率丢包，丢包则不发送，但是要设置超时，超时后重发，直到收到ack，才发送下一个分组，否则一直重发
+                # 设置随机变量
+                rand = random.random()
+                if rand > loss:
                     send_socket.sendto(send_package, (target_addr, target_port))
                 else:
-                    print(f"发送分组{next_idx}，序号为{new_id}，但是丢包了")
-                send_count += 1
+                    print(f"丢包，序号为{new_id}，数据为： {data[next_idx]}")
                 print(
                     f"发送分组{next_idx}，序号为{new_id}，打包前数据为： {data[next_idx]}，但打包后为：{send_package},此时的ack_map为： {ack_map}")
                 ack_map[new_id] = False
-                next_idx += 1
-                end_flag = True
-                time_out_open_flag = True
-            if time_out_open_flag:
-                time_out_new = time_out.TimeOut(ack_map, all_send_package, next_idx, first_id_sended, send_socket, target_addr,
-                                            target_port, stop_flag, time_out_list, self.packet_size, send_count)
+                time_out_new = time_out.TimeOut(ack_map, send_package, next_idx, new_id, send_socket, target_addr,
+                                                target_port, stop_flag, time_out_list)
                 time_out_new.start()
                 time_out_list.append(time_out_new)
-
+                next_idx += 1
+                end_flag = True
         print("发送完成，退出")
 
         return
@@ -105,6 +105,7 @@ class Method:
         max_idx = base_idx + self.recv_window - 1
         # 准备写入文件
         f = open(path, "wb")
+        print("开始接收")
         while True:
             # 接收数据
             try:
@@ -117,7 +118,9 @@ class Method:
                 break
             addr_send = recv_addr[0]
             port_send = recv_addr[1]
-            print(f"接收到的数据为： {recv_package}")
+            print("从{}:{}接收到数据".format(addr_send, port_send))
+            # print("该接收方法的端口为：", )
+            # print(f"接收到的数据为： {recv_package}")
             # 解析数据
             # print(f"接收到的数据长度为： {len(recv_package)}")
             recv_data_unpackage = data_sended.Data.unpackage(recv_package)
@@ -130,10 +133,11 @@ class Method:
             recv_id, recv_checksum, recv_data = recv_data_unpackage
             # 检查序号，若为期待的序号，则将数据存入字典
             if recv_id < base_idx:
-                # ack = data_sended.Data(None, recv_id)
+                ack = data_sended.Data(None, recv_id)
+                ack_package = ack.package()
                 # ack = ack.package()
-                # recv_socket.sendto(ack, (addr_send, port_send))
-                print(f"该数据{recv_id}已经被接收，丢弃，base_idx为： {base_idx}，重新发送ack: {ack}")
+                recv_socket.sendto(ack_package, (addr_send, port_send))
+                print(f"该数据{recv_id}已经被接收，丢弃，base_idx为： {base_idx}，重新发送ack: {ack.uid}")
                 continue
             if recv_id > max_idx:
                 print(f"该数据{recv_id}之前数据未被接收，丢弃，此时的rev_idx_arr为： {recv_id}，max_idx为： {max_idx}")
@@ -141,9 +145,9 @@ class Method:
             # 检查序号是否已经被接收
             if recv_id in rec_idx_arr:
                 print(f"该数据{recv_id}已经被接收，丢弃")
-                # ack = data_sended.Data(None, recv_id)
-                # ack = ack.package()
-                # recv_socket.sendto(ack, (addr_send, port_send))
+                ack = data_sended.Data(None, recv_id)
+                ack = ack.package()
+                recv_socket.sendto(ack, (addr_send, port_send))
                 continue
             # 检查是否为期待的分组
             rec_idx_arr.append(recv_id)
@@ -152,7 +156,7 @@ class Method:
             ack_int = data_sended.Data(None, recv_id)
             ack = ack_int.package()
             recv_socket.sendto(ack, (addr_send, port_send))
-            print(f"发送ack_int： {ack_int.uid}, ack:{ack}")
+            print(f"发送ack_int： {ack_int.uid}, ack:{ack}，接收的数据为： {recv_data}")
             # 检查窗口是否可以滑动
             for i in range(self.recv_window):
                 idx = base_idx + i
