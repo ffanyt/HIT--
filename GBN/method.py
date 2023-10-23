@@ -8,7 +8,7 @@ loss = 0.5
 
 
 class Method:
-    send_window = 5
+    send_window = 1
     recv_window = 1
     # 单个分组大小
     packet_size = 512
