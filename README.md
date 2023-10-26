@@ -1,7 +1,9 @@
 # README
 代码由python完成
 
-完全完成了实验二的要求，实现了停-等协议、GBN协议和SR协议，并实现了全双工的文件传输，超时重传、校验和检验、滑动窗口、接收ACK等功能经测试均正常
+本代码为哈工大计算机网络实验二
+
+实现了停-等协议、GBN协议和SR协议，并实现了全双工的文件传输，超时重传、校验和检验、滑动窗口、接收ACK等功能经测试均正常
 
 如有问题请在blog下评论，blog地址：https://yutao.love/archives/ji-suan-ji-wang-luo-shi-yan-er
 
