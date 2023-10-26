@@ -18,16 +18,11 @@ def server_start():
     # 创建GBN对象
     gbn = method.Method()
     # 开启多线程
-    # gbn.send(send_socket=server_socket, data=data, target_addr=address, target_port=target_port)
-    # gbn.recv(recv_socket=server_socket, target_addr=address, target_port=target_port, path=recv_path)
     recv_thread = threading.Thread(target=gbn.recv, args=(server_socket, address, 1230, recv_path)) # 从1231端口接收到1230端口
     recv_thread.start()
-    print("服务端接收成功")
-    # gbn.send(send_socket=server_socket, data=data, target_addr=address, target_port=target_port)
-    server_socket1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_socket1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # 用于发送
     server_socket1.bind((address, 1232))
-    gbn.send(send_socket=server_socket1, data=data, target_addr=address, target_port=1233)
-    print("服务端发送成功")
+    gbn.send(send_socket=server_socket1, data=data, target_addr=address, target_port=1233) # 从1232端口发送到1233端口
 
 
 # main

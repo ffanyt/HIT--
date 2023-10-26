@@ -32,7 +32,7 @@ class TimeOut(threading.Thread):
                 # 判断这个分组是否已经被接收
                 if self.ack_map[self.new_id] is None or self.ack_map[self.new_id]:
                     return
-                print(f"分组{self.idx}超时，重新发送，，该分组序号为： {self.new_id}，数据为： {self.send_package}，此时的ack_map为： {self.ack_map}")
+                print(f"分组{self.idx}超时，重新发送，，该分组序号为： {self.new_id}")
                 self.send_socket.sendto(self.send_package, (self.target_addr, self.target_port))
             except Exception as e:
                 print("超时重传失败，失败原因：", e)

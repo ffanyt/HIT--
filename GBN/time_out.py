@@ -28,41 +28,27 @@ class TimeOut(threading.Thread):
         if self.stop_flag:
             return
         flag = False
-        for i in range(self.send_window):
-            if self.ack_map.get(self.new_id + i) is None or self.ack_map.get(self.new_id + i):
+        for i in range(self.send_window): # 如果有一个分组没有收到ack
+            if self.ack_map.get(self.new_id + i) is None or self.ack_map.get(self.new_id + i): # 如果有一个分组收到了ack
                 continue
             else:
                 flag = True
                 break
         if not flag:
             return
-        # if self.ack_map.get(self.new_id) or self.ack_map.get(self.new_id) is None:
-        #     return
         try:
-            print("准备超时重传，此时的ack_map为： ", self.ack_map, "，此时的base id为： ", self.new_id, "此时的window为： ", self.send_window)
-            # print("type(self.send_packages): ", type(self.send_packages))
-            print("len", len(self.send_packages))
             time_out_send_ids = []
             for i in range(self.send_window):
-                # print("i: ", i)
-                print("self.new_id + i: ", self.new_id + i)
-                print(self.ack_map.get(self.new_id + i))
                 if self.ack_map.get(self.new_id + i) is None:
                     continue
-                if not self.ack_map.get(self.new_id + i):
-                    print("超时重传，重传的分组序号为： ", self.new_id + i)
+                if not self.ack_map.get(self.new_id + i): # 如果没有收到ack
                     send_package = self.send_packages[i]
-                    # print("send_package: ", send_package)
-                    # 转换为bytes类型
-                    # send_package = send_package.encode("utf-8")
-                    # print("type(send_package): ", type(send_package))
-                    self.send_socket.sendto(send_package, (self.target_addr, self.target_port))
-                    time_out_send_ids.append(self.new_id + i)
-                    # print(
-                    #     f"分组{self.idx}超时，重新发送，，该分组序号为： {self.new_id}，数据为： {self.send_packages}，此时的ack_map为： {self.ack_map}")
-            print(f"分组{self.idx}超时，重新发送，，该分组序号为： {time_out_send_ids}，数据为： {self.send_packages}，此时的ack_map为： {self.ack_map}")
+                    self.send_socket.sendto(send_package, (self.target_addr, self.target_port)) # 重发分组
+                    time_out_send_ids.append(self.new_id + i) # 将重发的分组序号加入列表
+            print(f"分组{self.idx}超时，重新发送，，该分组序号为： {time_out_send_ids}")
         except Exception as e:
             print("超时重传失败，失败原因：", e)
+        # 创建新的超时线程
         time_out_new = TimeOut(self.ack_map, self.send_packages, self.idx, self.new_id, self.send_socket,
                                self.target_addr, self.target_port, self.stop_flag, self.time_out_list,
                                self.len_of_package, self.send_window)

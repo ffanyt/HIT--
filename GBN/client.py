@@ -19,18 +19,14 @@ def client_start():
     client_socket.bind((address, prot))
     # 创建GBN对象
     gbn = method.Method()
-    # 开启多线程
-    # send_thread = threading.Thread(target=gbn.send, args=(client_socket, data, address, target_port))
-    # gbn.send(send_socket=client_socket, data=data, target_addr=address, target_port=target_port)
+    # 创建发送线程
     send_thread = threading.Thread(target=gbn.send,
                                    args=(client_socket, data, address, target_port))  # 从1230端口发送到1231端口
     send_thread.start()
-    print("客户端发送成功")
-    # gbn.recv(recv_socket=client_socket, target_addr=address, target_port=target_port, path=recv_path)
     client_socket1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client_socket1.bind((address, 1233))
+    # 创建接收线程
     gbn.recv(recv_socket=client_socket1, target_addr=address, target_port=1232, path=recv_path)
-    print("客户端接收成功")
 
 
 # main

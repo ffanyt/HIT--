@@ -22,12 +22,10 @@ def client_start():
     # 开启多线程
     send_thread = threading.Thread(target=gbn.send, args=(client_socket, data, address, target_port))# 从1230端口发送到1231端口
     send_thread.start()
-    # gbn.send(send_socket=client_socket, data=data, target_addr=address, target_port=target_port)
-    print("客户端发送成功")
     client_socket1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     client_socket1.bind((address, 1233))
     gbn.recv(recv_socket=client_socket1, target_addr=address, target_port=1232, path=recv_path)
-    print("客户端接收成功")
+    print("客户端收发完成")
 
 
 # main

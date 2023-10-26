@@ -29,15 +29,17 @@ class Method:
         print(f"分组内数据的大小为： {self.packet_size}字节，分为{len(data)}个分组发送")
         stop_flag = False
         if len(data) != 0:
+            # 启动接收线程
             rev = RevACK.RevAck(send_socket, ack_map, stop_flag, len(data))
             rev.start()
         end_end_flag = False
+        # 发送数据
         while next_idx < num_of_packets or len(ack_map) > 0:
             if len(data) == 0:
                 break
             old_base = base_idx
             old_size = len(ack_map)
-            # print(f"现在对窗口进行更新，当前窗口起点为： {base_idx}，next_point为： {next_idx}，此时的ack_map为： {ack_map}")
+            # 检查ack_map中的键值对，如果值为True，则将键值对删除
             for i in range(old_size):
                 idx = (old_base + i + 1) % 256
                 # 检查ack_map是否有idx的键值对
@@ -51,6 +53,7 @@ class Method:
                 if end_flag and len(ack_map) == 0 and base_idx == len(data):
                     end_end_flag = True
                     break
+            # 检查是否发送完毕
             if end_end_flag:
                 print("所有的发送数据都被接收完成")
                 rev.set_stop()
@@ -58,15 +61,10 @@ class Method:
                 rev.join()
                 # print("test")
                 break
+            # 检查是否可以发送下一个窗口
             ack_num = base_idx + len(ack_map)
             i = 1
-            # print(f"即将发送下一个窗口，当前窗口起点为： {base_idx}，next_point为： {next_idx}，此时的ack_map为： {ack_map}")
             while next_idx - base_idx < self.send_window and next_idx < num_of_packets:
-                # print("循环2:", xvnhuan2)
-                # xvnhuan2 += 1
-                # if rev.is_alive():
-                # print("testtest111")
-                # print(rev.getName())
                 if next_idx > num_of_packets:
                     break
                 new_id = (ack_num + i) % 256
@@ -83,7 +81,8 @@ class Method:
                     print(f"丢包，序号为{new_id}，数据为： {data[next_idx]}")
                 print(
                     f"发送分组{next_idx}，序号为{new_id}，打包前数据为： {data[next_idx]}，但打包后为：{send_package},此时的ack_map为： {ack_map}")
-                ack_map[new_id] = False
+                ack_map[new_id] = False # 将新的键值对加入ack_map
+                # 启动超时线程
                 time_out_new = time_out.TimeOut(ack_map, send_package, next_idx, new_id, send_socket, target_addr,
                                                 target_port, stop_flag, time_out_list)
                 time_out_new.start()
@@ -109,37 +108,30 @@ class Method:
         while True:
             # 接收数据
             try:
-                recv_package, recv_addr = recv_socket.recvfrom(self.packet_size + 3)
+                recv_package, recv_addr = recv_socket.recvfrom(self.packet_size + 3) # 接收数据
             except Exception as e:
                 print("接收完成，退出")
                 with open(path, "wb") as f:
                     f.write(all_data)
                 f.close()
                 break
-            addr_send = recv_addr[0]
-            port_send = recv_addr[1]
-            print("从{}:{}接收到数据".format(addr_send, port_send))
-            # print("该接收方法的端口为：", )
-            # print(f"接收到的数据为： {recv_package}")
-            # 解析数据
-            # print(f"接收到的数据长度为： {len(recv_package)}")
+            addr_send = recv_addr[0] # 发送方的地址
+            port_send = recv_addr[1] # 发送方的端口
             recv_data_unpackage = data_sended.Data.unpackage(recv_package)
-            # print(f"接收到的数据解析后为： {recv_data_unpackage}")
             # 检查校验和
-            if not data_sended.Data.check(recv_package):
+            if not data_sended.Data.check(recv_package): # 如果校验和错误，丢弃该分组
                 print("校验和错误")
                 continue
             # 分解data
             recv_id, recv_checksum, recv_data = recv_data_unpackage
             # 检查序号，若为期待的序号，则将数据存入字典
-            if recv_id < base_idx:
+            if recv_id < base_idx: # 如果序号小于base_idx，说明该数据已经被接收，丢弃
                 ack = data_sended.Data(None, recv_id)
                 ack_package = ack.package()
-                # ack = ack.package()
                 recv_socket.sendto(ack_package, (addr_send, port_send))
                 print(f"该数据{recv_id}已经被接收，丢弃，base_idx为： {base_idx}，重新发送ack: {ack.uid}")
                 continue
-            if recv_id > max_idx:
+            if recv_id > max_idx: # 如果序号大于max_idx，说明该数据之前的数据还没有被接收，丢弃
                 print(f"该数据{recv_id}之前数据未被接收，丢弃，此时的rev_idx_arr为： {recv_id}，max_idx为： {max_idx}")
                 continue
             # 检查序号是否已经被接收
@@ -149,21 +141,27 @@ class Method:
                 ack = ack.package()
                 recv_socket.sendto(ack, (addr_send, port_send))
                 continue
-            # 检查是否为期待的分组
+            # 将数据存入字典
             rec_idx_arr.append(recv_id)
             rec_data_map[recv_id] = recv_data
             # 发送ack
             ack_int = data_sended.Data(None, recv_id)
             ack = ack_int.package()
-            recv_socket.sendto(ack, (addr_send, port_send))
+            rand = random.random()
+            if rand > loss:
+                recv_socket.sendto(ack, (addr_send, port_send))
+            else:
+                print(f"丢包，序号为{recv_id}")
             print(f"发送ack_int： {ack_int.uid}, ack:{ack}，接收的数据为： {recv_data}")
             # 检查窗口是否可以滑动
-            for i in range(self.recv_window):
-                idx = base_idx + i
-                if idx not in rec_idx_arr:
-                    break
-                all_data += rec_data_map[idx]
-                rec_idx_arr.remove(idx)
-                base_idx += 1
-                max_idx = base_idx + self.recv_window - 1
-        print("接收完成，退出")
+            print("此时的rec_idx_arr为：", rec_idx_arr, "此时的base_idx为：", base_idx, "此时的max_idx为：", max_idx)
+            if base_idx in rec_idx_arr: # 如果base_idx在rec_idx_arr中，说明base_idx的数据都已经接收到了
+                temp_base_idx = base_idx # 保存base_idx
+                for i in range(self.recv_window): # 滑动窗口
+                    idx = temp_base_idx + i
+                    if idx not in rec_idx_arr: # 如果idx不在rec_idx_arr中，说明idx的数据还没有接收到，不能滑动窗口
+                        break
+                    all_data += rec_data_map[idx] # 将数据写入文件
+                    rec_idx_arr.remove(idx) # 将idx从rec_idx_arr中删除
+                    base_idx += 1 # base_idx向前移动
+                    max_idx = base_idx + self.recv_window - 1 # 更新max_idx
