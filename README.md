@@ -5,7 +5,7 @@
 
 实现了停-等协议、GBN协议和SR协议，并实现了全双工的文件传输，超时重传、校验和检验、滑动窗口、接收ACK等功能经测试均正常
 
-如有问题请在blog下评论，blog地址：https://yutao.love/archives/ji-suan-ji-wang-luo-shi-yan-er
+博客内有更完善的信息，且如有问题请在blog下评论，blog地址：https://yutao.love/archives/ji-suan-ji-wang-luo-shi-yan-er
 
 ## 代码结构
 
